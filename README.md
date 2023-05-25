@@ -1,4 +1,4 @@
-# Interrupt driven and buffered UART for the Arduino Nano Every
+# Interrupt driven and buffered UART for the Arduino Nano Every, Version 2
 
 **``By Hans-Henrik Fuxelius, 2023-05-24``
 
