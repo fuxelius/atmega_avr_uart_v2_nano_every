@@ -1,7 +1,7 @@
 /*
  *     main.c
  *
- *          Project:  Test of USART for ATmega4808
+ *          Project:  Test of USART for Arduino Nano Every
  *          Author:   Hans-Henrik Fuxelius   
  *          Date:     Uppsala, 2023-05-24          
  */

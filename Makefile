@@ -1,6 +1,10 @@
-# Name:   Makefile
-# Author: Hans-Henrik Fuxelius
-# Date:   2023-05-24
+#
+#      Makefile
+# 
+#           Project:  UART for Arduino Nano Every
+#           Author:   Hans-Henrik Fuxelius   
+#           Date:     Uppsala, 2023-05-24           
+#
 
 # DEVICE ....... The AVR device you compile for
 # CLOCK ........ Target AVR clock rate in Hertz

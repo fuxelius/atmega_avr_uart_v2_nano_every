@@ -1,105 +1,127 @@
 /*
  *     uart.c
  *
- *          Project:  UART for megaAVR, tinyAVR & AVR DA
+ *          Project:  UART for megaAVR, tinyAVR & AVR DA DD DB EA
  *          Author:   Hans-Henrik Fuxelius   
  *          Date:     Uppsala, 2023-05-24           
  */
 
 #include <avr/io.h>
 #include <util/atomic.h>
+#include <util/delay.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <util/delay.h>
 #include "uart.h"
 
 #define USART_RX_ERROR_MASK (USART_BUFOVF_bm | USART_FERR_bm | USART_PERR_bm) // [Datasheet ss. 295]
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 // RINGBUFFER FUNCTIONS
-void rbuffer_init(volatile ringbuffer* rb) {
-	rb->in = 0;
-	rb->out = 0;
-	rb->count = 0;
+void rbuffer_init(volatile ringbuffer_t* rb) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		rb->in = 0;
+		rb->out = 0;
+		rb->count = 0;
+	}
 }
 
-uint8_t rbuffer_count(volatile ringbuffer* rb) {
+uint8_t rbuffer_count(volatile ringbuffer_t* rb) {
 	return rb->count;
 }
 
-bool rbuffer_full(volatile ringbuffer* rb) {
+bool rbuffer_full(volatile ringbuffer_t* rb) {
 	return (rb->count == (uint8_t)RBUFFER_SIZE);
 }
 
-bool rbuffer_empty(volatile ringbuffer* rb) {
+bool rbuffer_empty(volatile ringbuffer_t* rb) {
 	return (rb->count == 0);
 }
 
-void rbuffer_insert(char data, volatile ringbuffer* rb) {   
+void rbuffer_insert(char data, volatile ringbuffer_t* rb) {   
 	*(rb->buffer + rb->in) = data;
-	rb->in = (rb->in + 1) & ((uint8_t)RBUFFER_SIZE - 1);
-	rb->count++;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		rb->in = (rb->in + 1) & ((uint8_t)RBUFFER_SIZE - 1);
+		rb->count++;
+	}
 }
 
-char rbuffer_remove(volatile ringbuffer* rb) {
+char rbuffer_remove(volatile ringbuffer_t* rb) {
 	char data = *(rb->buffer + rb->out);
-	rb->out = (rb->out + 1) & ((uint8_t)RBUFFER_SIZE - 1);
-	rb->count--;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		rb->out = (rb->out + 1) & ((uint8_t)RBUFFER_SIZE - 1);
+		rb->count--;
+	}
 	return data;
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 // VARIABLES
 #ifdef USART0_ENABLE
-volatile usart_meta usart0 = {.usart = &USART0};
+volatile usart_meta_t usart0 = {.usart = &USART0, .pmuxr = &PORTMUX.USARTROUTEA};
 #endif
 
 #ifdef USART1_ENABLE
-volatile usart_meta usart1 = {.usart = &USART1};
+volatile usart_meta_t usart1 = {.usart = &USART1, .pmuxr = &PORTMUX.USARTROUTEA};
 #endif
 
 #ifdef USART2_ENABLE
-volatile usart_meta usart2 = {.usart = &USART2};
+volatile usart_meta_t usart2 = {.usart = &USART2, .pmuxr = &PORTMUX.USARTROUTEA};
 #endif
 
 #ifdef USART3_ENABLE
-volatile usart_meta usart3 = {.usart = &USART3};
+volatile usart_meta_t usart3 = {.usart = &USART3, .pmuxr = &PORTMUX.USARTROUTEA};
+#endif
+
+#ifdef USART4_ENABLE
+volatile usart_meta_t usart4 = {.usart = &USART4, .pmuxr = &PORTMUX.USARTROUTEB};
+#endif
+
+#ifdef USART5_ENABLE
+volatile usart_meta_t usart5 = {.usart = &USART5, .pmuxr = &PORTMUX.USARTROUTEB};
+#endif
+
+#ifdef USART6_ENABLE
+volatile usart_meta_t usart6 = {.usart = &USART6, .pmuxr = &PORTMUX.USARTROUTEB};
+#endif
+
+#ifdef USART7_ENABLE
+volatile usart_meta_t usart7 = {.usart = &USART7, .pmuxr = &PORTMUX.USARTROUTEB};
 #endif
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 // USART FUNCTIONS
-void usart_set(volatile usart_meta* meta, PORT_t*  port, uint8_t route, uint8_t tx_pin, uint8_t rx_pin) {
+void usart_set(volatile usart_meta_t* meta, PORT_t*  port, uint8_t route_gc, uint8_t tx_pin, uint8_t rx_pin) {
 	meta->port = port;
-	meta->route = route;
+	meta->route = route_gc;
 	meta->tx_pin = tx_pin;
 	meta->rx_pin = rx_pin;
 }
 
-void usart_send_char(volatile usart_meta* meta, char c) {
+void usart_send_char(volatile usart_meta_t* meta, char c) {
 	while(rbuffer_full(&meta->rb_tx));
 	rbuffer_insert(c, &meta->rb_tx);
 	meta->usart->CTRLA |= USART_DREIE_bm;					// Enable Tx interrupt 
 }
 
-void usart_init(volatile usart_meta* meta, uint16_t baud_rate) {
+void usart_init(volatile usart_meta_t* meta, uint16_t baud_rate) {
 	rbuffer_init(&meta->rb_rx);								// Init Rx buffer
 	rbuffer_init(&meta->rb_tx);								// Init Tx buffer
-    PORTMUX.USARTROUTEA |= meta->route;   					// Set route
+	*meta->pmuxr |= meta->route;							// Set PIN route			
     meta->port->DIR &= ~meta->rx_pin;			    		// Rx PIN input
     meta->port->DIR |= meta->tx_pin;			    		// Tx PIN output
     meta->usart->BAUD = baud_rate; 							// Set BAUD rate
-	meta->usart->CTRLB |= USART_RXEN_bm | USART_TXEN_bm; 	// Enable Rx & Enable Tx 
+	meta->usart->CTRLB |= (USART_RXEN_bm | USART_TXEN_bm); 	// Enable Rx & Enable Tx 
 	meta->usart->CTRLA |= USART_RXCIE_bm; 					// Enable Rx interrupt 
 }
 
-void usart_send_string(volatile usart_meta* meta, char* str, uint8_t len) {
+void usart_send_string(volatile usart_meta_t* meta, char* str, uint8_t len) {
 	for (size_t i=0; i<len; i++) {
 		usart_send_char(meta, str[i]);
 	}
 }
 
-uint16_t usart_read_char(volatile usart_meta* meta) {
+uint16_t usart_read_char(volatile usart_meta_t* meta) {
 	if (!rbuffer_empty(&meta->rb_rx)) {
 		return (((meta->usart_error & USART_RX_ERROR_MASK) << 8) | (uint16_t)rbuffer_remove(&meta->rb_rx));
 	}
@@ -108,16 +130,14 @@ uint16_t usart_read_char(volatile usart_meta* meta) {
 	}
 }
 
-void usart_close(volatile usart_meta* meta) {
-	while(!rbuffer_empty(&meta->rb_tx)); 						// Wait for Tx to finish all character in ring buffer
-	while(!(meta->usart->STATUS & USART_DREIF_bm)); 			// Wait for Tx unit to finish the last character of ringbuffer
+void usart_close(volatile usart_meta_t* meta) {
+	while(!rbuffer_empty(&meta->rb_tx)); 						// Wait for Tx to transmit all characters in ring buffer
+	while(!(meta->usart->STATUS & USART_DREIF_bm)); 			// Wait for Tx unit to transmit the last character of ringbuffer
 
 	_delay_ms(200); 											// Extra safety for Tx to finish!
 
 	meta->usart->CTRLB &= ~(USART_RXEN_bm | USART_TXEN_bm); 	// Disable Tx, Rx unit
 	meta->usart->CTRLA &= ~(USART_RXCIE_bm | USART_DREIE_bm); 	// Disable Tx, Rx interrupt
-
-	// Disable PORTMUX pins [PORTMUX_USART0_NONE_gc]
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
@@ -154,15 +174,47 @@ int usart3_print_char(char c, FILE *stream) {
 FILE usart3_stream = FDEV_SETUP_STREAM(usart3_print_char, NULL, _FDEV_SETUP_WRITE);
 #endif
 
+#ifdef USART4_ENABLE
+int usart4_print_char(char c, FILE *stream) { 
+    usart_send_char(&usart4, c);							
+    return 0; 
+}
+FILE usart4_stream = FDEV_SETUP_STREAM(usart4_print_char, NULL, _FDEV_SETUP_WRITE);
+#endif
+
+#ifdef USART5_ENABLE
+int usart5_print_char(char c, FILE *stream) { 
+    usart_send_char(&usart5, c);							
+    return 0; 
+}
+FILE usart5_stream = FDEV_SETUP_STREAM(usart5_print_char, NULL, _FDEV_SETUP_WRITE);
+#endif
+
+#ifdef USART6_ENABLE
+int usart6_print_char(char c, FILE *stream) { 
+    usart_send_char(&usart6, c);							
+    return 0; 
+}
+FILE usart6_stream = FDEV_SETUP_STREAM(usart6_print_char, NULL, _FDEV_SETUP_WRITE);
+#endif
+
+#ifdef USART7_ENABLE
+int usart7_print_char(char c, FILE *stream) { 
+    usart_send_char(&usart7, c);							
+    return 0; 
+}
+FILE usart7_stream = FDEV_SETUP_STREAM(usart7_print_char, NULL, _FDEV_SETUP_WRITE);
+#endif
+
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ----
 // ISR HELPER FUNCTIONS
-void isr_usart_rxc_vect(volatile usart_meta* meta) {
+static inline void isr_usart_rxc_vect(volatile usart_meta_t* meta) {
     char data = meta->usart->RXDATAL;
 	rbuffer_insert(data, &meta->rb_rx);
 	meta->usart_error = meta->usart->RXDATAH;
 }
 
-void isr_usart_dre_vect(volatile usart_meta* meta) {
+static inline void isr_usart_dre_vect(volatile usart_meta_t* meta) {
 	if(!rbuffer_empty(&meta->rb_tx)) {
 		meta->usart->TXDATAL = rbuffer_remove(&meta->rb_tx);     
 	}
@@ -206,5 +258,41 @@ ISR(USART3_RXC_vect) {
 }
 ISR(USART3_DRE_vect) {
 	isr_usart_dre_vect(&usart3);
+}
+#endif
+
+#ifdef USART4_ENABLE
+ISR(USART4_RXC_vect) {
+	isr_usart_rxc_vect(&usart4);
+}
+ISR(USART4_DRE_vect) {
+	isr_usart_dre_vect(&usart4);
+}
+#endif
+
+#ifdef USART5_ENABLE
+ISR(USART5_RXC_vect) {
+	isr_usart_rxc_vect(&usart5);
+}
+ISR(USART5_DRE_vect) {
+	isr_usart_dre_vect(&usart5);
+}
+#endif
+
+#ifdef USART6_ENABLE
+ISR(USART6_RXC_vect) {
+	isr_usart_rxc_vect(&usart6);
+}
+ISR(USART6_DRE_vect) {
+	isr_usart_dre_vect(&usart6);
+}
+#endif
+
+#ifdef USART7_ENABLE
+ISR(USART7_RXC_vect) {
+	isr_usart_rxc_vect(&usart7);
+}
+ISR(USART7_DRE_vect) {
+	isr_usart_dre_vect(&usart7);
 }
 #endif
