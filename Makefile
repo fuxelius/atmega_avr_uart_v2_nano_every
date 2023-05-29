@@ -3,7 +3,9 @@
 # 
 #           Project:  UART for Arduino Nano Every
 #           Author:   Hans-Henrik Fuxelius   
-#           Date:     Uppsala, 2023-05-24           
+#           Date:     Uppsala, 2023-05-24 
+#           License:  MIT
+#           Version:  RC1           
 #
 
 # DEVICE ....... The AVR device you compile for
