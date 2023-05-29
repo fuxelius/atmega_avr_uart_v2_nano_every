@@ -1,11 +1,11 @@
 /*
  *     main.c
  * 
- *          Description:  UART test session 
- *          Author:       Hans-Henrik Fuxelius   
- *          Date:         Uppsala, 2023-05-24 
+ *          Description:  UART test session
+ *          Author:       Hans-Henrik Fuxelius
+ *          Date:         Uppsala, 2023-05-29
  *          License:      MIT
- *          Version:      RC1     
+ *          Version:      RC1
  */
 
 #define F_CPU 2666666
@@ -49,7 +49,7 @@ int main(void) {
 
             // (6) - Get Rx count with usart_rx_count()
             sprintf_P(buffer, PSTR("rx count: %i "), usart_rx_count(&usart3));
-            fputs(buffer, &usart3_stream);            
+            fputs(buffer, &usart3_stream);
 
             // (7) - Get USART input by polling ringbuffer
             while(!((c = usart_read_char(&usart3)) & USART_NO_DATA)) {
@@ -72,8 +72,8 @@ int main(void) {
         // (9) - Check that everything is printed before closing USART
         fprintf_P(&usart3_stream, PSTR("\r\n\r\n<-<->->"));
 
-        // (10) - Close USART3
-        usart_close(&usart3);    
+        // (10) - Close USART0
+        usart_close(&usart3);
 
         // (11) - Clear global interrupts
         cli();

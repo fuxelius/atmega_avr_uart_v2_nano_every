@@ -2,10 +2,10 @@
 #      Makefile
 # 
 #           Project:  UART for Arduino Nano Every
-#           Author:   Hans-Henrik Fuxelius   
-#           Date:     Uppsala, 2023-05-24 
+#           Author:   Hans-Henrik Fuxelius
+#           Date:     Uppsala, 2023-05-24
 #           License:  MIT
-#           Version:  RC1           
+#           Version:  RC1
 #
 
 # DEVICE ....... The AVR device you compile for
@@ -20,9 +20,9 @@
 ######################################################################################
 TARGET      = at4809_uart
 CLOCK       = 2666666
-FUSE2 		= 0x01 
-FUSE5 		= 0xC9
-FUSE8 		= 0x00
+FUSE2       = 0x01 
+FUSE5       = 0xC9
+FUSE8       = 0x00
 
 DEVICE      = atmega4809
 PARTNO      = m4809
@@ -56,8 +56,8 @@ SIZE       = $(AVR_SIZE) --format=avr --mcu=$(DEVICE) $(TARGET).elf
 AVRDUDE = $(AVR_DUDE) $(PROGRAMMER)
 
 COMPILE = $(AVR_GCC) -Wall -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -Og -std=gnu11 \
-		  -I"$(AVR_HAXX_PATH)/include" -B"$(AVR_HAXX_PATH)/devices/$(DEVICE)" \
-		  -ffunction-sections -MD -MP -fdata-sections -fpack-struct -fshort-enums -g2 
+          -I"$(AVR_HAXX_PATH)/include" -B"$(AVR_HAXX_PATH)/devices/$(DEVICE)" \
+          -ffunction-sections -MD -MP -fdata-sections -fpack-struct -fshort-enums -g2 
 
 ######################################################################################
 # symbolic targets:
@@ -85,8 +85,8 @@ deploy:
 	cp $(TARGET).hex $(DEPLOYDIR)/$(TARGET)_$(TODAY).hex
 	md5sum $(DEPLOYDIR)/$(TARGET)_$(TODAY).hex > $(DEPLOYDIR)/$(TARGET)_$(TODAY).md5
 
-flash:	all
-	. $(AVR_HAXX_PATH)/reset_wait 				
+flash: all
+	. $(AVR_HAXX_PATH)/reset_wait
 	$(AVRDUDE) -U flash:w:$(TARGET).hex:i
 
 fuse:
